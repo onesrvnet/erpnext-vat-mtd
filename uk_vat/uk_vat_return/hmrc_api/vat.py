@@ -26,8 +26,12 @@ def is_company_vat_enabled(company):
 
 def get_vrn(company):
     tax_id = frappe.db.get_value("Company", company, "tax_id")
-    if not tax_id.upper().startswith("GB"):
-        frappe.throw("Company Tax ID setting is invalid. Should be GB followed by 9 digits.")
+    if (tax_id is not None) and (not tax_id.upper().startswith("GB")):
+        # Fetch the vrn via a custom uk_vrn field on Company if the normal tax id is not a UK one.
+        # This way non-uk companies can use this module.
+        tax_id = frappe.db.get_value("Company", company, "uk_vrn")
+        if (tax_id is not None) and (not tax_id.upper().startswith("GB")):
+            frappe.throw("Company Tax ID setting is invalid. Should be GB followed by 9 digits. Please set uk_vrn on the respective company.")
     return tax_id[2:]
 
 def get_open_obligations(company):
