@@ -1,7 +1,7 @@
 [project]
 name = "uk_vat"
 authors = [
-    { name = "Adam Ravo" }
+    { name = "onesrv" }
 ]
 description = "UK VAT MTD Integration"
 requires-python = ">=3.10"
