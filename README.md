@@ -18,11 +18,13 @@ We hope you find it useful. Please feel free to raise issues or submit pull requ
 required.
 
 ## Installation
+> [!WARNING]
+> This module is currently only tested with ERPNext Version 15! Once other versions are deemed to be compatible, we will release applicable branches for those. The command would then use `--branch=version-16` for example.
 
-You can install this module into your existing installation with :
+You can install this module into your existing installation using the following commands:
 
 ```sh
-	bench get-app uk_vat https://github.com/software-to-hardware/erpnext-vat-mtd
+	bench get-app uk_vat https://github.com/onesrvnet/erpnext-vat-mtd --branch=version-15
 	bench install-app uk_vat
 ```
 
