@@ -1,5 +1,9 @@
 # UK VAT Module
 
+> [!NOTE]
+> This fork of the original module focuses on making UK VAT in ERPNext accessible for NON UK businesses.
+> We are continuing to develop this module for our UK operations as an EU based company. This means we will primarily focus on making this use-case work but will try to ensure this module also meets needs of UK businesses.
+
 The UK VAT module is an application for ERPNext to extend it to include:
 
  * A VAT Return generator for UK/EU VAT. This uses data from your invoices to automatically
