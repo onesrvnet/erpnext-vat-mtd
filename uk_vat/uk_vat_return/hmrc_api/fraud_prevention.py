@@ -9,6 +9,7 @@ import urllib.parse
 from datetime import datetime, timezone
 import uuid
 import json
+from urllib.parse import quote
 
 DEVICE_ID_COOKIE = "Gov-Client-Device-ID"
 
@@ -18,11 +19,16 @@ def get_fraud_prevention_headers():
 
     h = {}
     h["Gov-Client-Connection-Method"] = "WEB_APP_VIA_SERVER"
-    h["Gov-Client-Browser-Do-Not-Track"] = str(
-        bool(frappe.request.headers.get("DNT"))).lower()
+    # Deprecated -> not mentioned in API docs
+    #h["Gov-Client-Browser-Do-Not-Track"] = str(
+    #    bool(frappe.request.headers.get("DNT"))).lower()
     # We don't issue software licences.
-    #h["Gov-Vendor-License-IDs"] = "{}={}".format(
-    #    "ERPNext", hashlib.sha256(b"OPEN SOURCE").hexdigest())
+    # It is true that no one issues licenses, but HMRC requires this header.
+    # The only exception where this header cannot be sent according to hmrc is " If you are unable to submit a header, you must contact us to explain why. Make sure you include full details of the restrictions."
+    # We will use the installation GUID as a replacement of a license key as it should be just as immutable -> you should consult HMRC
+    guid = frappe.db.get_single_value("HMRC API Settings", "installation_guid")
+    h["Gov-Vendor-License-IDs"] = "{}={}".format(
+        "ERPNext", hashlib.sha256(guid.encode("utf-8")).hexdigest())
     h["Gov-Vendor-Product-Name"] = "ERPNext-MTD-VAT-Module"
     h["Gov-Vendor-Version"] = "erpnext-mtd-module=1.0&{}={}".format(
         platform.system(), platform.release()
@@ -35,20 +41,6 @@ def get_fraud_prevention_headers():
         frappe.local.cookie_manager.set_cookie(DEVICE_ID_COOKIE,
             client_device_id)
     h["Gov-Client-Device-ID"] = client_device_id
-
-    # Client address
-    # In production this should come from your proxy front end
-    if frappe.db.get_single_value("HMRC API Settings", "gov_ip_headers"):
-        for hdr in ("Gov-Client-Public-IP", "Gov-Client-Public-IP-Timestamp",
-                    "Gov-Client-Public-Port", "Gov-Vendor-Public-IP",
-                    "Gov-Vendor-Forwarded"):
-            h[hdr] = frappe.get_request_header(hdr)
-    else:
-        h["Gov-Client-Public-IP"] = frappe.request.remote_addr
-        h["Gov-Client-Public-IP-Timestamp"] = utc_now
-        h["Gov-Client-Public-Port"] = ""
-        h["Gov-Vendor-Forwarded"] = ""
-        h["Gov-Vendor-Public-IP"] = ""
 
     # Headers from this application
     h["Gov-Client-User-IDs"] = "frappe={}".format(
@@ -73,6 +65,25 @@ def get_fraud_prevention_headers():
         chdr["ScreenColorDepth"]
     )
 
+    # Traefik headers
+    # Parse all required gov headers via reverse proxy vars
+    h["Gov-Client-Public-IP"] = get_client_public_ip()
+    h["Gov-Client-Public-IP-Timestamp"] = utc_now
+    ip = frappe.db.get_single_value("HMRC API Settings", "public_ip")
+    if ip is not None:
+        h["Gov-Vendor-Public-IP"] = ip
+
+    h["Gov-Vendor-Forwarded"] = f"by={encode_ip(ip)}&for={encode_ip(get_client_public_ip())}"
+
+
+    # Client headers - only replace non specified headers
+    # In production this should come from your proxy front end
+    if frappe.db.get_single_value("HMRC API Settings", "gov_ip_headers"):
+        for hdr in ("Gov-Client-Public-IP", "Gov-Client-Public-IP-Timestamp",
+                    "Gov-Client-Public-Port", "Gov-Vendor-Public-IP",
+                    "Gov-Vendor-Forwarded"):
+            if hdr not in h:
+                h[hdr] = frappe.get_request_header(hdr)
     # Header not required for WEB_APP_VIA_SERVER connection method.
     #h["Gov-Client-Browser-Plugins"] = chdr["Plugins"]
 
@@ -92,4 +103,16 @@ def get_fraud_prevention_headers():
 @frappe.whitelist()
 def http_header_feedback():
     return frappe.request.headers
+
+# Identify public IP from reverse-proxy
+def get_client_public_ip():
+    req = frappe.local.request
+    xff = req.headers.get("X-Forwarded-For")
+    if xff:
+        return xff.split(",")[0].strip()
+    return req.headers.get("X-Real-Ip") or req.remote_addr
+
+def encode_ip(ip):
+    # IPv4 unaffected; IPv6 must be percent-encoded
+    return quote(ip, safe="")
 

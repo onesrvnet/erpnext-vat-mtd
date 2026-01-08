@@ -14,7 +14,8 @@
   "advanced_section",
   "auth_base",
   "api_base",
-  "installation_guid"
+  "installation_guid",
+  "public_ip"
  ],
  "fields": [
   {
@@ -51,6 +52,12 @@
    "fieldname": "api_base",
    "fieldtype": "Data",
    "label": "API Base URL"
+  },
+    {
+   "default": "",
+   "fieldname": "public_ip",
+   "fieldtype": "Data",
+   "label": "Public IP in Fraud Prevention Headers"
   },
   {
    "description": "This field is generated automatically upon save. Thereafter, it should not be changed, deleted or copied to a new installation.",
